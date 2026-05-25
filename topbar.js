@@ -119,6 +119,23 @@
 @media (max-width: 380px) {
   .topbar-pill-label { display: none; }
 }
+.topbar-export {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.topbar-export:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #FAFAFA; }
+.topbar-export:active { transform: scale(0.92); }
+@media (max-width: 480px) { .topbar-export { width: 30px; font-size: 13px; } }
 
 /* === Global mobile lockdown ===
    1) Hide the right-side scrollbar on phones (iOS uses overlay scrollbars anyway).
@@ -195,6 +212,7 @@ body.topbar-modal-open {
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">FINANCE</span>
   </a>
+  <button class="topbar-export" id="topbarExport" aria-label="Export all data" type="button" title="Export backup">⬇</button>
 </header>
 `;
 
@@ -361,6 +379,30 @@ body.topbar-modal-open {
     pushWaterMergedToSupabase(state);
   }
 
+  // -------- Export all localStorage data as JSON file --------
+  function exportData() {
+    const snapshot = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const raw = localStorage.getItem(k);
+      try { snapshot[k] = JSON.parse(raw); } catch (e) { snapshot[k] = raw; }
+    }
+    const payload = {
+      exported: new Date().toISOString(),
+      data: snapshot,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'dashboard-backup-' + date + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // -------- Mobile lockdown helpers --------
   // Belt-and-suspenders zoom prevention — iOS Safari sometimes ignores
   // user-scalable=no, so we also kill the gesture events directly.
@@ -413,6 +455,8 @@ body.topbar-modal-open {
     injectStyleAndHTML();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
+    const exportBtn = document.getElementById('topbarExport');
+    if (exportBtn) exportBtn.addEventListener('click', exportData);
     render();
     lockGestures();
     startModalLock();
